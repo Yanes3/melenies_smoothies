@@ -12,15 +12,18 @@ st.write(
 name_on_order = st.text_input("Name on Smoothie: ")
 st.write("The name on your Smoothie will be: ", name_on_order)
 
+# Conectar a Snowflake
 cnx = st.connection("snowflake")
 session = cnx.session()
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
-st.dataframe(data=my_dataframe, use_container_width=True)
 
-# Correcting the multiselect and syntax issue
+# Convertir Snowflake DataFrame a Pandas DataFrame y extraer la columna 'FRUIT_NAME'
+fruit_names = my_dataframe.to_pandas()['FRUIT_NAME'].tolist()
+
+# Usar la lista de frutas para el multiselect
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients: ',
-    my_dataframe['FRUIT_NAME'].to_list(),  # Convert Snowflake DataFrame to list for multiselect options
+    fruit_names,  # Usar la lista de frutas convertida
     max_selections=5
 )
 
