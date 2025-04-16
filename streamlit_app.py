@@ -5,7 +5,7 @@ from snowflake.snowpark.functions import col
 import requests
 smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
 #st.text(smoothiefroot_response.json())
-sf_df = st.dataframe(data=smoothiefroot_responde.json(), use_container_width = True)
+sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width = True)
 # Write directly to the app
 st.title(f"Customize Your Smoothie! 🥛")
 st.write(
