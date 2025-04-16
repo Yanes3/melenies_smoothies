@@ -41,7 +41,10 @@ if ingredients_list:
     values ('""" + ingredients_string.strip() + """', '""" + name_on_order + """')
     """
     
-    if time_to_insert:
-      session.sql(my_insert_stmt).collect()
-      time_to_insert = st.button('Submit Order', key='unique_submit_order_button')
-      st.success(f"Your Smoothie is ordered, {name_on_order}!", icon="✅")
+    # Primero define la variable
+time_to_insert = st.button('Submit Order', key='unique_submit_order_button')
+
+# Luego úsala en la condición
+if time_to_insert:
+    session.sql(my_insert_stmt).collect()
+    st.success(f"Your Smoothie is ordered, {name_on_order}!", icon="✅")
