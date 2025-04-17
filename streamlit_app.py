@@ -11,48 +11,53 @@ name_on_order = st.text_input("Name on Smoothie: ")
 st.write("The name on your Smoothie will be: ", name_on_order)
 
 # Establish Snowflake connection
-cnx = st.connection("snowflake")
-session = cnx.session()
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
-
-# Convert Snowflake DataFrame to Pandas DataFrame
-pd_df = my_dataframe.to_pandas()
+try:
+    cnx = st.connection("snowflake")
+    session = cnx.session()
+    my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+    # Convert Snowflake DataFrame to Pandas DataFrame
+    pd_df = my_dataframe.to_pandas()
+except Exception as e:
+    st.error(f"Could not connect to Snowflake: {str(e)}")
+    st.stop()
 
 # Correcting the multiselect and syntax issue
 ingredients_list = st.multiselect(
-    'Choose up to 5 ingredients: '
-    , my_dataframe['FRUIT_NAME'].tolist()  # Convert Snowflake DataFrame to list for multiselect options
-    , max_selections=5
+    'Choose up to 5 ingredients: ',
+    pd_df['FRUIT_NAME'].tolist(),  # Use Pandas DataFrame for multiselect options
+    max_selections=5
 )
 
 if ingredients_list:
-    ingredients_string = ''
-    
+    ingredients_string = ', '.join(ingredients_list)  # Use join for efficient string concatenation
+
     for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen + ', '  # Concatenate with a comma for better formatting
-        
-        # Get the corresponding SEARCH_ON value for the selected fruit
-        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
-        
-        # Fetch nutrition information for the selected fruit from the API
-        smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
-        
-        if smoothiefroot_response.status_code == 200:
+        try:
+            # Get the corresponding SEARCH_ON value for the selected fruit
+            search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+
+            # Fetch nutrition information for the selected fruit from the API
+            smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
+            smoothiefroot_response.raise_for_status()  # Raise an error if the request fails
+
             st.subheader(f'{fruit_chosen} Nutrition Information')
             st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-        else:
-            st.error(f"Error fetching data for {fruit_chosen}")
-    
-    # Build the INSERT statement for the smoothie order
-    my_insert_stmt = f"""
-    INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-    VALUES ('{ingredients_string.strip(', ')}', '{name_on_order}')
-    """
+        except Exception as api_error:
+            st.error(f"Error fetching data for {fruit_chosen}: {str(api_error)}")
 
+    # Build the INSERT statement for the smoothie order
+    my_insert_stmt = """
+    INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+    VALUES (%s, %s)
+    """
+    
     # Button to submit the order
     time_to_insert = st.button('Submit Order', key='unique_submit_order_button')
 
     # Insert the order when the button is clicked
     if time_to_insert:
-        session.sql(my_insert_stmt).collect()
-        st.success(f"Your Smoothie is ordered, {name_on_order}!", icon="✅")
+        try:
+            session.sql(my_insert_stmt, (ingredients_string, name_on_order)).collect()  # Use parameterized query
+            st.success(f"Your Smoothie is ordered, {name_on_order}!", icon="✅")
+        except Exception as db_error:
+            st.error(f"Could not submit order: {str(db_error)}")
