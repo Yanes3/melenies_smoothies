@@ -46,18 +46,19 @@ if ingredients_list:
             st.error(f"Error fetching data for {fruit_chosen}: {str(api_error)}")
 
     # Build the INSERT statement for the smoothie order
-    my_insert_stmt = """
-    INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-    VALUES (%s, %s)
-    """
-    
-    # Button to submit the order
-    time_to_insert = st.button('Submit Order', key='unique_submit_order_button')
+   # Build the INSERT statement for the smoothie order
+my_insert_stmt = """
+INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+VALUES (:1, :2)
+"""
 
-    # Insert the order when the button is clicked
-    if time_to_insert:
-        try:
-            session.sql(my_insert_stmt, (ingredients_string, name_on_order)).collect()  # Use parameterized query
-            st.success(f"Your Smoothie is ordered, {name_on_order}!", icon="✅")
-        except Exception as db_error:
-            st.error(f"Could not submit order: {str(db_error)}")
+# Button to submit the order
+time_to_insert = st.button('Submit Order', key='unique_submit_order_button')
+
+# Insert the order when the button is clicked
+if time_to_insert:
+    try:
+        session.sql(my_insert_stmt).bind((ingredients_string, name_on_order)).collect()  # Use positional binding
+        st.success(f"Your Smoothie is ordered, {name_on_order}!", icon="✅")
+    except Exception as db_error:
+        st.error(f"Could not submit order: {str(db_error)}")
